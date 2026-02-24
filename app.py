@@ -8,7 +8,6 @@ import io
 import zipfile
 import re
 
-
 FIXED_CROP_MARGIN = 0.1
 SMOOTH_WINDOW = 15
 MAX_PEAK_WIDTH = 30
@@ -77,7 +76,6 @@ def get_peak_bounds(peak_pos, left_idx, right_idx, height):
         
     return x_s, x_e
 
-# --- UPDATE: pass dynamic_prominence as an argument ---
 def analyze_single_strip(img_array, t_dist_near, t_dist_far, dynamic_prominence, crop_margin=FIXED_CROP_MARGIN):
     if len(img_array.shape) == 3: img = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
     else: img = img_array
@@ -98,7 +96,6 @@ def analyze_single_strip(img_array, t_dist_near, t_dist_far, dynamic_prominence,
     
     smooth_profile = flatten_profile(smooth_profile)
     
-    # --- Use the dynamic prominence value based on UI selection ---
     peaks, properties = find_peaks(smooth_profile, prominence=dynamic_prominence, distance=10, width=2)
     
     res = {
@@ -206,7 +203,6 @@ strip_type = st.sidebar.radio(
     help="Traditional uses higher sensitivity to find faint lines. Competitive uses lower sensitivity to ignore noise."
 )
 
-# Set the prominence based on the selection
 if strip_type == "Traditional (e.g., hCG)":
     current_prominence = 0.5
 else:
@@ -214,26 +210,32 @@ else:
 
 mode = st.sidebar.radio("Input Mode", ["📂 Batch Upload", "✂️ Single Photo"])
 
-def process_and_download(image_list, filenames, video_ids, strip_ids, active_prominence):
+# --- NEW FUNCTION FOR BATCH PROCESSING (Returns Data to Session State) ---
+def process_batch_data(image_list, filenames, video_ids, strip_ids, active_prominence):
     zip_buf = io.BytesIO()
     summary = []
+    individual_data = [] # Stores data for the UI dropdown
     prog = st.progress(0)
     
     with zipfile.ZipFile(zip_buf, "w") as zf:
         for i, (img, fname, vid, sid) in enumerate(zip(image_list, filenames, video_ids, strip_ids)):
             prog.progress((i+1)/len(image_list))
             
-            # --- Pass the active_prominence down ---
             res_adj = analyze_single_strip(img, T_DIST_NEAR, T_DIST_FAR, active_prominence, crop_margin=FIXED_CROP_MARGIN)
             res_unadj = analyze_single_strip(img, T_DIST_NEAR, T_DIST_FAR, active_prominence, crop_margin=0.0)
             
             if res_adj and res_unadj:
                 path = f"{vid}/strip_{sid}/"
+                adj_plot_buf = None
+                
                 for r, name, col in [(res_adj, 'adjusted', 'blue'), (res_unadj, 'unadjusted', 'gray')]:
                     fig = create_plot(r, f"{name.title()}: {fname}", col)
                     buf = io.BytesIO()
                     fig.savefig(buf, format='png')
-                    zf.writestr(f"{path}plot_{name}.png", buf.getvalue())
+                    img_bytes = buf.getvalue()
+                    zf.writestr(f"{path}plot_{name}.png", img_bytes)
+                    if name == 'adjusted':
+                        adj_plot_buf = img_bytes
                     plt.close(fig)
 
                 fig_c, ax = plt.subplots(figsize=(10,6))
@@ -250,6 +252,13 @@ def process_and_download(image_list, filenames, video_ids, strip_ids, active_pro
 
                 summary.append({"Video_ID": vid, "Strip_ID": sid, 
                                 "Adj_Ratio": res_adj['ratio'], "Unadj_Ratio": res_unadj['ratio']})
+                
+                # Save into array for the interactive UI dropdown
+                individual_data.append({
+                    "filename": fname,
+                    "adj_ratio": res_adj['ratio'],
+                    "adj_plot_buf": adj_plot_buf
+                })
         
         if summary:
             df = pd.DataFrame(summary)
@@ -259,11 +268,21 @@ def process_and_download(image_list, filenames, video_ids, strip_ids, active_pro
                 df.pivot_table(index="Video_ID", columns="Strip_ID", values="Unadj_Ratio").to_excel(writer, sheet_name='Unadjusted')
             zf.writestr("Summary_Analysis.xlsx", excel_buf.getvalue())
 
+    prog.empty()
+    return zip_buf, individual_data
+
+
+# --- ORIGINAL FUNCTION FOR SINGLE PHOTO MODE ---
+def process_and_download(image_list, filenames, video_ids, strip_ids, active_prominence):
+    zip_buf, _ = process_batch_data(image_list, filenames, video_ids, strip_ids, active_prominence)
     st.success("Done!")
     st.download_button("📥 Download ZIP", zip_buf.getvalue(), "LFA_Results.zip", "application/zip")
 
+
+# --- UI LOGIC ---
 if mode == "📂 Batch Upload":
     files = st.file_uploader("Upload Strips", accept_multiple_files=True, type=['jpg','png','tif'])
+    
     if files and st.button("Analyze Batch"):
         imgs, names, vids, sids = [], [], [], []
         for f in files:
@@ -272,8 +291,57 @@ if mode == "📂 Batch Upload":
             m = re.match(r"(\d+)_strip_(\d+)", f.name)
             vids.append(int(m.group(1)) if m else 0)
             sids.append(int(m.group(2)) if m else 0)
-        # Pass current_prominence to processor
-        process_and_download(imgs, names, vids, sids, current_prominence)
+        
+        # Process and store results in Streamlit Session State
+        zip_buf, individual_data = process_batch_data(imgs, names, vids, sids, current_prominence)
+        
+        st.session_state['batch_zip'] = zip_buf.getvalue()
+        st.session_state['batch_data'] = individual_data
+        st.session_state['batch_names'] = names
+        st.success("Batch Analysis Complete! Select results from the sidebar.")
+
+    # If processing is complete, display the dynamic UI
+    if 'batch_data' in st.session_state and 'batch_names' in st.session_state:
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🔍 Browse Results")
+        
+        # 1. Drop-down Menu Search
+        selected_file = st.sidebar.selectbox("Select an image to view:", st.session_state['batch_names'])
+        
+        # Retrieve the selected item
+        idx = st.session_state['batch_names'].index(selected_file)
+        data = st.session_state['batch_data'][idx]
+        
+        st.markdown("---")
+        # 2. Big Text Display for T/C Ratio
+        st.markdown(f"<h3 style='text-align: center;'>Results for: {selected_file}</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; color: #E03C31; font-size: 3.5rem; margin-bottom: 20px;'>T/C Ratio: {data['adj_ratio']:.4f}</h1>", unsafe_allow_html=True)
+        
+        # 3. Display the Adjusted AUC Graph
+        col_img1, col_img2, col_img3 = st.columns([1, 3, 1])
+        with col_img2:
+            st.image(data['adj_plot_buf'], caption=f"Adjusted AUC Profile: {selected_file}", use_container_width=True)
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 4. Independent Download Options
+        dl_col1, dl_col2 = st.columns(2)
+        with dl_col1:
+            st.download_button(
+                label="🖼️ Download Current Plot", 
+                data=data['adj_plot_buf'], 
+                file_name=f"adjusted_{selected_file}.png", 
+                mime="image/png",
+                use_container_width=True
+            )
+        with dl_col2:
+            st.download_button(
+                label="📥 Download ALL (ZIP & Excel Summary)", 
+                data=st.session_state['batch_zip'], 
+                file_name="LFA_Batch_Results.zip", 
+                mime="application/zip",
+                use_container_width=True
+            )
 
 elif mode == "✂️ Single Photo":
     f = st.file_uploader("Upload Board Photo", type=['jpg','png'])
@@ -291,6 +359,5 @@ elif mode == "✂️ Single Photo":
         if bot > top and st.button("Extract & Analyze"):
             strips, locs, _ = detect_and_slice_strips(full_img, top, bot)
             st.write(f"Found {len(strips)} strips")
-            # Pass current_prominence to processor
             process_and_download(strips, [f"Strip_{i+1}" for i in range(len(strips))], 
                                  [1]*len(strips), list(range(1, len(strips)+1)), current_prominence)
