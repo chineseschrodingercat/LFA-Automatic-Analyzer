@@ -2,7 +2,7 @@
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 ## 📌 Overview
 The **LFA Automatic Analyzer** is a robust, research-grade bioinformatics tool designed to automate the quantification of Lateral Flow Assay (LFA) strips. Unlike subjective visual interpretation, this tool leverages **Computer Vision** and **Signal Processing** algorithms to extract precise **Test/Control (T/C) ratios**, enabling quantitative analysis for applications ranging from clinical diagnostics (e.g., hCG) to toxicology (e.g., Xylazine detection).
