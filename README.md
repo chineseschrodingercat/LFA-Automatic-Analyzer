@@ -9,6 +9,13 @@ The **LFA Automatic Analyzer** is a robust, research-grade bioinformatics tool d
 
 This platform features an interactive **Streamlit** interface, allowing researchers to process batch datasets or individual biological samples with real-time visualization of signal profiles.
 
+## 📸 Visual Demo
+
+| **Interactive Dashboard** | **Automated Analysis Output** |
+|:---:|:---:|
+| <img src="assets/ui_dashboard.png" width="100%"> | <img src="assets/output_plot.png" width="100%"> |
+| *User-friendly Streamlit Interface for batch processing* | *Robust peak integration with automatic baseline correction* |
+
 ## ✨ Key Technical Features
 
 ### 1. Robust Signal Processing Pipeline
