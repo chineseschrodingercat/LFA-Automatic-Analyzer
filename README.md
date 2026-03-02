@@ -67,3 +67,6 @@ Researchers can fine-tune the following parameters in `app.py` to adapt to diffe
 Developed by **Minhao Liu** (Lead Developer).
 * **Algorithm Design:** Signal processing logic and T/C quantification.
 * **UI/UX:** Streamlit dashboard implementation.
+
+**Acknowledgment:**
+* **Pu Sun** (Technical Contributor): Contributed to the conceptual design of the processing pipeline and provided insights for code refinement.
