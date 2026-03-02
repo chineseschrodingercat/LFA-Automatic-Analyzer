@@ -1,90 +1,69 @@
-# 🧬 LFA Automatic Analyzer
+# 🧬 LFA Automatic Analyzer: High-Throughput Quantification for Lateral Flow Assays
 
-The **LFA Automatic Analyzer** is a Python-based Streamlit web application designed for researchers and scientists to automatically process, quantify, and analyze Lateral Flow Assay (LFA) strips. 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://streamlit.io)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## 📌 Overview
+The **LFA Automatic Analyzer** is a robust, research-grade bioinformatics tool designed to automate the quantification of Lateral Flow Assay (LFA) strips. Unlike subjective visual interpretation, this tool leverages **Computer Vision** and **Signal Processing** algorithms to extract precise **Test/Control (T/C) ratios**, enabling quantitative analysis for applications ranging from clinical diagnostics (e.g., hCG) to toxicology (e.g., Xylazine detection).
 
-By applying robust computer vision and signal processing techniques, this tool extracts **Test (T)** and **Control (C)** line intensities, applies flat global baselines, and calculates highly accurate **Area Under the Curve (AUC)** T/C ratios.
+This platform features an interactive **Streamlit** interface, allowing researchers to process batch datasets or individual biological samples with real-time visualization of signal profiles.
 
----
+## ✨ Key Technical Features
 
-## ✨ Key Features
+### 1. Robust Signal Processing Pipeline
+* **Auto-Orientation & Segmentation:** Algorithms automatically detect strip boundaries and correct orientation for consistent profiling.
+* **Background Detrending (Baseline Correction):** Implements a **polynomial fitting algorithm** to remove membrane background noise (e.g., "smiling effects" or uneven lighting), ensuring a flat global baseline for integration.
+* **Adaptive Smoothing:** Utilizes **Savitzky-Golay filters** to reduce high-frequency sensor noise while preserving the integrity of peak morphology.
 
-### Dual Input Workflows
-* **📂 Batch Upload:** Process entire folders of individually pre-cropped LFA strip images simultaneously.
-* **✂️ Single Photo Mode:** Upload a single image of a board containing multiple strips. Use intuitive UI sliders to define the active test window, and the app will automatically segment, extract, and analyze every strip.
+### 2. Dual-Mode Workflow
+* **📂 High-Throughput Batch Mode:** Process hundreds of pre-cropped strip images simultaneously, exporting a consolidated Excel report with Pivot Tables for statistical analysis.
+* **✂️ Interactive Single-Image Mode:** Upload a raw photo of a multi-strip board. The integrated ROI selector allows users to define active zones, and the system automatically slices and analyzes each strip individually.
 
-### Assay Type Selector (Dynamic Sensitivity)
-* **Traditional (e.g., hCG):** High sensitivity (`prominence = 0.5`) to catch faint positive test lines.
-* **Competitive (e.g., Xylazine):** Lower sensitivity (`prominence = 1.8`) to ignore background noise and correctly identify negative/faint competitive lines.
+### 3. Advanced Peak Integration
+* **Dynamic Assay Sensitivity:**
+    * *Traditional Mode:* High sensitivity (`prominence=0.5`) for detecting faint positives.
+    * *Competitive Mode:* High specificity (`prominence=1.8`) for analyzing competitive inhibition assays (e.g., small molecule detection).
+* **Global Baseline Integration:** Calculates Area Under the Curve (AUC) using a unified baseline floor anchored to the signal minima, preventing bias in T/C ratio calculations.
 
-### Advanced Signal Processing
-* **Auto-Orientation:** Automatically rotates horizontal strip images to a vertical processing format.
-* **Background Detrending:** Uses linear polynomial fitting to remove membrane background gradients ("smiling" or lighting effects), creating a perfectly flat profile.
+## 🛠️ Installation & Usage
 
-### Smart Peak Integration
-* **Relative T-Line Search:** Anchors to the reliable Control line first, then searches for the Test line within a defined spatial window (ignoring sample pad artifacts).
-* **Global Baseline Integration:** Calculates both T and C areas using a shared horizontal baseline floor, ensuring unbiased T/C ratio comparisons.
+### Prerequisites
+* Python 3.8+
+* `pip` package manager
 
----
+### Quick Start
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/YourUsername/LFA-Automatic-Analyzer.git](https://github.com/YourUsername/LFA-Automatic-Analyzer.git)
+    cd LFA-Automatic-Analyzer
+    ```
 
-## 🚀 Installation & Setup
+2.  **Install dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-You do not need any web development experience to run this app. It runs locally in your browser via Python.
+3.  **Launch the Dashboard:**
+    ```bash
+    streamlit run app.py
+    ```
+    The application will automatically open in your default browser at `http://localhost:8501`.
 
-### 1. Prerequisites
-Ensure you have **Python 3.8+** installed.
+## ⚙️ Algorithmic Configuration
+Researchers can fine-tune the following parameters in `app.py` to adapt to different membrane materials:
 
-### 2. Install Dependencies
-Open your terminal (or Anaconda command prompt) and install the required packages:
-
-pip install streamlit opencv-python-headless numpy pandas matplotlib scipy XlsxWriter
-
-
-### 3. Run the Application
-Navigate to the directory containing the code and run:
-
-streamlit run app.py
-
-The application will automatically open in your default web browser (usually at `http://localhost:8501`).
-
----
-
-## ⚙️ Advanced Configuration (Under the Hood)
-
-For developers or researchers needing to adapt the algorithm to different physical strip dimensions or noisy membranes, you can adjust the hardcoded parameters at the top of `app.py`:
-
-| Parameter | Default Value | Description |
+| Parameter | Default | Description |
 | :--- | :--- | :--- |
-| `FIXED_CROP_MARGIN` | `0.10` | Crops 10% off the left and right edges of the strip to remove shadows from the plastic cassette housing. |
-| `SMOOTH_WINDOW` | `15` | The window size for the Savitzky-Golay filter. Increase this number for highly noisy or granular images. |
-| `MAX_PEAK_WIDTH` | `30` | The maximum allowed width (in pixels) for integrating a peak. Prevents the baseline from extending infinitely on noisy backgrounds. |
-| `T_DIST_NEAR` | `30` | The minimum distance (in pixels) upstream from the Control line to stop searching for the Test line (prevents merging). |
-| `T_DIST_FAR` | `100` | The maximum distance (in pixels) upstream from the Control line to start searching (prevents picking up the sample pad). |
-| `BASELINE_METHOD` | `'lower'` | Determines how the global baseline is drawn. `'lower'` anchors to the lowest detected peak boundary (safest for max area). |
+| `SMOOTH_WINDOW` | `15` | Window length for Savitzky-Golay filtering. Increase for noisy nitrocellulose membranes. |
+| `BASELINE_METHOD` | `'lower'` | Strategy for baseline anchoring (`'lower'` recommended for maximum sensitivity). |
+| `T_DIST_NEAR` | `30` | Minimum pixel distance upstream from Control line to define the Test zone. |
 
----
+## 📊 Outputs
+* **Structured Data:** `Summary_Analysis.xlsx` containing raw and adjusted T/C ratios.
+* **Visualization:** High-resolution plots (`.png`) for every processed strip, showing the raw signal, fitted baseline, and integration boundaries.
 
-## 📂 Output Files & Data
-
-Once the analysis is complete, the application generates a single, downloadable ZIP file containing structured data for your records:
-
-### 1. Summary_Analysis.xlsx
-A master Excel report containing automatically generated Pivot Tables.
-* **Adjusted Sheet:** Contains the final T/C ratios using the smoothed, detrended, and baseline-corrected data.
-* **Unadjusted Sheet:** Contains raw T/C ratios for algorithm verification and comparison.
-
-### 2. Individual Strip Visualizations
-Inside the ZIP, each strip gets its own dedicated folder (`VideoID/strip_ID/`) containing:
-* `plot_adjusted.png`: The cleaned signal profile showing the flat global baseline (red dashed line) and shaded integration areas.
-* `plot_unadjusted.png`: The raw, unprocessed signal profile.
-* `plot_comparison.png`: An overlay graph showing the raw vs. adjusted profiles and the gray "Search Zone" where the algorithm looked for the Test line.
-
----
-
-## 📝 File Naming Convention (Batch Mode)
-
-When using the Batch Upload mode, ensure your pre-cropped images follow this naming structure so the app can correctly map them to the Excel spreadsheet:
-
-`[VideoID]_strip_[StripID].jpg`
-
-> **Example:** `00158_strip_1.jpg`, `00158_strip_2.jpg`
+## 🤝 Contribution
+Developed by **Minhao Liu** (Lead Developer).
+* **Algorithm Design:** Signal processing logic and T/C quantification.
+* **UI/UX:** Streamlit dashboard implementation.
